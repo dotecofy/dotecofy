@@ -10,7 +10,7 @@ In this paradigm, the joke that says a bug is an undocumented feature is almost 
 
 This methodology does not say what is a good documentation or what are good tests. This is up to the developer or the team to decide what is satisfying or not.
 
-It is also important to understand that following this methodology does not necesseraly guarantee the quality. The only think that does this methodology is to give more credibility to documenting and testing and less to the code.
+It is also important to understand that following this methodology does not necessarily guarantee the quality. The only think that does this methodology is to give more credibility to documenting and testing and less to the code.
 The assumption behind all of it is that if writing unit tests and documentation is considered as boring and annoying if the focus is given to documenting and testing, then coding becomes boring. However, you will write the code because you want to be paid or gratified by the praises of the community ;)
 
 ## The four steps
@@ -25,7 +25,7 @@ Starting by writing the documentation forces us to think about what we are going
 
 If the documentation is good, everything will be clearer for everybody.
 
-The documentation, together with the tests are considered as the product. Therefore, it is complety valid to think that there are different versions with new features and improvement.
+The documentation, together with the tests are considered as the product. Therefore, it is completely valid to think that there are different versions with new features and improvement.
 
 ### Step 2: test
 
@@ -37,6 +37,23 @@ Code or implement. During this phase a code that should comply with the document
 
 ### Step 4: verify
 
-In step 2 you have described the tests or created automated tests. Now, it is time to apply them and see if the code produced is acceptable. Tests are not necessarly automatized, a test saying to verify manually if a table has been created in the database is perfectly valid.
+In step 2 you have described the tests or created automated tests. Now, it is time to apply them and see if the code produced is acceptable. Tests are not necessarily automatized, a test saying to verify manually if a table has been created in the database is perfectly valid.
 
-During this phase, code is verified throught the tests but it can also be reviewed by another team.
+During this phase, code is verified through the tests but it can also be reviewed by another team.
+
+## Artefacts
+
+### Project
+
+### Component
+
+### Feature
+
+### Version
+
+### Improvement
+
+## Installation
+
+
+
