@@ -55,5 +55,12 @@ During this phase, code is verified through the tests but it can also be reviewe
 
 ## Installation
 
+### Creation of the database (MariaDB or MySQL)
+
+CREATE DATABASE dotecofy CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'dotecofy_user1'@'localhost' identified by 'Pa$$1337';
+GRANT ALL PRIVILEGES ON dotecofy.* TO 'dotecofy_user1'@'localhost';
+
+Please change the password
 
 
