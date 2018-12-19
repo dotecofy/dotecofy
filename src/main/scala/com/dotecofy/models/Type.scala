@@ -1,16 +1,17 @@
 package com.dotecofy.models
 
+import java.time.ZonedDateTime
+
 import scalikejdbc._
-import java.time.{ZonedDateTime}
 
 case class Type(
-  id: Int,
-  idProject: Int,
-  signature: String,
-  name: String,
-  description: Option[String] = None,
-  createdDate: ZonedDateTime,
-  updatedDate: Option[ZonedDateTime] = None) {
+                 id: Int,
+                 idProject: Int,
+                 signature: String,
+                 name: String,
+                 description: Option[String] = None,
+                 createdDate: ZonedDateTime,
+                 updatedDate: Option[ZonedDateTime] = None) {
 
   def save()(implicit session: DBSession = Type.autoSession): Type = Type.save(this)(session)
 
@@ -26,8 +27,11 @@ object Type extends SQLSyntaxSupport[Type] {
   override val tableName = "type"
 
   override val columns = Seq("id", "id_project", "signature", "name", "description", "created_date", "updated_date")
+  override val autoSession = AutoSession
+  val t = Type.syntax("t")
 
   def apply(t: SyntaxProvider[Type])(rs: WrappedResultSet): Type = apply(t.resultName)(rs)
+
   def apply(t: ResultName[Type])(rs: WrappedResultSet): Type = new Type(
     id = rs.get(t.id),
     idProject = rs.get(t.idProject),
@@ -37,10 +41,6 @@ object Type extends SQLSyntaxSupport[Type] {
     createdDate = rs.get(t.createdDate),
     updatedDate = rs.get(t.updatedDate)
   )
-
-  val t = Type.syntax("t")
-
-  override val autoSession = AutoSession
 
   def find(id: Int)(implicit session: DBSession = autoSession): Option[Type] = {
     withSQL {
@@ -75,12 +75,12 @@ object Type extends SQLSyntaxSupport[Type] {
   }
 
   def create(
-    idProject: Int,
-    signature: String,
-    name: String,
-    description: Option[String] = None,
-    createdDate: ZonedDateTime,
-    updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Type = {
+              idProject: Int,
+              signature: String,
+              name: String,
+              description: Option[String] = None,
+              createdDate: ZonedDateTime,
+              updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Type = {
     val generatedKey = withSQL {
       insert.into(Type).namedValues(
         column.idProject -> idProject,
@@ -111,7 +111,8 @@ object Type extends SQLSyntaxSupport[Type] {
         'description -> entity.description,
         'createdDate -> entity.createdDate,
         'updatedDate -> entity.updatedDate))
-    SQL("""insert into type(
+    SQL(
+      """insert into type(
       id_project,
       signature,
       name,
@@ -144,7 +145,9 @@ object Type extends SQLSyntaxSupport[Type] {
   }
 
   def destroy(entity: Type)(implicit session: DBSession = autoSession): Int = {
-    withSQL { delete.from(Type).where.eq(column.id, entity.id) }.update.apply()
+    withSQL {
+      delete.from(Type).where.eq(column.id, entity.id)
+    }.update.apply()
   }
 
 }

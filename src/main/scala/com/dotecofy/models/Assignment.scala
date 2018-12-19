@@ -1,17 +1,18 @@
 package com.dotecofy.models
 
+import java.time.ZonedDateTime
+
 import scalikejdbc._
-import java.time.{ZonedDateTime}
 
 case class Assignment(
-  id: Int,
-  idImprType: Int,
-  idImprovement: Int,
-  signature: String,
-  name: String,
-  description: Option[String] = None,
-  createdDate: ZonedDateTime,
-  updatedDate: Option[ZonedDateTime] = None) {
+                       id: Int,
+                       idImprType: Int,
+                       idImprovement: Int,
+                       signature: String,
+                       name: String,
+                       description: Option[String] = None,
+                       createdDate: ZonedDateTime,
+                       updatedDate: Option[ZonedDateTime] = None) {
 
   def save()(implicit session: DBSession = Assignment.autoSession): Assignment = Assignment.save(this)(session)
 
@@ -27,22 +28,10 @@ object Assignment extends SQLSyntaxSupport[Assignment] {
   override val tableName = "assignment"
 
   override val columns = Seq("id", "id_impr_type", "id_improvement", "signature", "name", "description", "created_date", "updated_date")
-
-  def apply(a: SyntaxProvider[Assignment])(rs: WrappedResultSet): Assignment = apply(a.resultName)(rs)
-  def apply(a: ResultName[Assignment])(rs: WrappedResultSet): Assignment = new Assignment(
-    id = rs.get(a.id),
-    idImprType = rs.get(a.idImprType),
-    idImprovement = rs.get(a.idImprovement),
-    signature = rs.get(a.signature),
-    name = rs.get(a.name),
-    description = rs.get(a.description),
-    createdDate = rs.get(a.createdDate),
-    updatedDate = rs.get(a.updatedDate)
-  )
-
+  override val autoSession = AutoSession
   val a = Assignment.syntax("a")
 
-  override val autoSession = AutoSession
+  def apply(a: SyntaxProvider[Assignment])(rs: WrappedResultSet): Assignment = apply(a.resultName)(rs)
 
   def find(id: Int)(implicit session: DBSession = autoSession): Option[Assignment] = {
     withSQL {
@@ -70,6 +59,17 @@ object Assignment extends SQLSyntaxSupport[Assignment] {
     }.map(Assignment(a.resultName)).list.apply()
   }
 
+  def apply(a: ResultName[Assignment])(rs: WrappedResultSet): Assignment = new Assignment(
+    id = rs.get(a.id),
+    idImprType = rs.get(a.idImprType),
+    idImprovement = rs.get(a.idImprovement),
+    signature = rs.get(a.signature),
+    name = rs.get(a.name),
+    description = rs.get(a.description),
+    createdDate = rs.get(a.createdDate),
+    updatedDate = rs.get(a.updatedDate)
+  )
+
   def countBy(where: SQLSyntax)(implicit session: DBSession = autoSession): Long = {
     withSQL {
       select(sqls.count).from(Assignment as a).where.append(where)
@@ -77,13 +77,13 @@ object Assignment extends SQLSyntaxSupport[Assignment] {
   }
 
   def create(
-    idImprType: Int,
-    idImprovement: Int,
-    signature: String,
-    name: String,
-    description: Option[String] = None,
-    createdDate: ZonedDateTime,
-    updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Assignment = {
+              idImprType: Int,
+              idImprovement: Int,
+              signature: String,
+              name: String,
+              description: Option[String] = None,
+              createdDate: ZonedDateTime,
+              updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Assignment = {
     val generatedKey = withSQL {
       insert.into(Assignment).namedValues(
         column.idImprType -> idImprType,
@@ -117,7 +117,8 @@ object Assignment extends SQLSyntaxSupport[Assignment] {
         'description -> entity.description,
         'createdDate -> entity.createdDate,
         'updatedDate -> entity.updatedDate))
-    SQL("""insert into assignment(
+    SQL(
+      """insert into assignment(
       id_impr_type,
       id_improvement,
       signature,
@@ -153,7 +154,9 @@ object Assignment extends SQLSyntaxSupport[Assignment] {
   }
 
   def destroy(entity: Assignment)(implicit session: DBSession = autoSession): Int = {
-    withSQL { delete.from(Assignment).where.eq(column.id, entity.id) }.update.apply()
+    withSQL {
+      delete.from(Assignment).where.eq(column.id, entity.id)
+    }.update.apply()
   }
 
 }

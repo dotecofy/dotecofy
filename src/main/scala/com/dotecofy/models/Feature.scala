@@ -1,16 +1,17 @@
 package com.dotecofy.models
 
+import java.time.ZonedDateTime
+
 import scalikejdbc._
-import java.time.{ZonedDateTime}
 
 case class Feature(
-  id: Int,
-  idProject: Int,
-  signature: String,
-  name: String,
-  description: Option[String] = None,
-  createdDate: ZonedDateTime,
-  updatedDate: Option[ZonedDateTime] = None) {
+                    id: Int,
+                    idProject: Int,
+                    signature: String,
+                    name: String,
+                    description: Option[String] = None,
+                    createdDate: ZonedDateTime,
+                    updatedDate: Option[ZonedDateTime] = None) {
 
   def save()(implicit session: DBSession = Feature.autoSession): Feature = Feature.save(this)(session)
 
@@ -26,21 +27,10 @@ object Feature extends SQLSyntaxSupport[Feature] {
   override val tableName = "feature"
 
   override val columns = Seq("id", "id_project", "signature", "name", "description", "created_date", "updated_date")
-
-  def apply(f: SyntaxProvider[Feature])(rs: WrappedResultSet): Feature = apply(f.resultName)(rs)
-  def apply(f: ResultName[Feature])(rs: WrappedResultSet): Feature = new Feature(
-    id = rs.get(f.id),
-    idProject = rs.get(f.idProject),
-    signature = rs.get(f.signature),
-    name = rs.get(f.name),
-    description = rs.get(f.description),
-    createdDate = rs.get(f.createdDate),
-    updatedDate = rs.get(f.updatedDate)
-  )
-
+  override val autoSession = AutoSession
   val f = Feature.syntax("f")
 
-  override val autoSession = AutoSession
+  def apply(f: SyntaxProvider[Feature])(rs: WrappedResultSet): Feature = apply(f.resultName)(rs)
 
   def find(id: Int)(implicit session: DBSession = autoSession): Option[Feature] = {
     withSQL {
@@ -62,6 +52,16 @@ object Feature extends SQLSyntaxSupport[Feature] {
     }.map(Feature(f.resultName)).single.apply()
   }
 
+  def apply(f: ResultName[Feature])(rs: WrappedResultSet): Feature = new Feature(
+    id = rs.get(f.id),
+    idProject = rs.get(f.idProject),
+    signature = rs.get(f.signature),
+    name = rs.get(f.name),
+    description = rs.get(f.description),
+    createdDate = rs.get(f.createdDate),
+    updatedDate = rs.get(f.updatedDate)
+  )
+
   def findAllBy(where: SQLSyntax)(implicit session: DBSession = autoSession): List[Feature] = {
     withSQL {
       select.from(Feature as f).where.append(where)
@@ -75,12 +75,12 @@ object Feature extends SQLSyntaxSupport[Feature] {
   }
 
   def create(
-    idProject: Int,
-    signature: String,
-    name: String,
-    description: Option[String] = None,
-    createdDate: ZonedDateTime,
-    updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Feature = {
+              idProject: Int,
+              signature: String,
+              name: String,
+              description: Option[String] = None,
+              createdDate: ZonedDateTime,
+              updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Feature = {
     val generatedKey = withSQL {
       insert.into(Feature).namedValues(
         column.idProject -> idProject,
@@ -111,7 +111,8 @@ object Feature extends SQLSyntaxSupport[Feature] {
         'description -> entity.description,
         'createdDate -> entity.createdDate,
         'updatedDate -> entity.updatedDate))
-    SQL("""insert into feature(
+    SQL(
+      """insert into feature(
       id_project,
       signature,
       name,
@@ -144,7 +145,9 @@ object Feature extends SQLSyntaxSupport[Feature] {
   }
 
   def destroy(entity: Feature)(implicit session: DBSession = autoSession): Int = {
-    withSQL { delete.from(Feature).where.eq(column.id, entity.id) }.update.apply()
+    withSQL {
+      delete.from(Feature).where.eq(column.id, entity.id)
+    }.update.apply()
   }
 
 }

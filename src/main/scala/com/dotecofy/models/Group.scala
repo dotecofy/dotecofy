@@ -1,16 +1,17 @@
 package com.dotecofy.models
 
+import java.time.ZonedDateTime
+
 import scalikejdbc._
-import java.time.{ZonedDateTime}
 
 case class Group(
-  id: Int,
-  idProject: Int,
-  signature: Option[String] = None,
-  name: String,
-  description: Option[String] = None,
-  createdDate: ZonedDateTime,
-  updatedDate: Option[ZonedDateTime] = None) {
+                  id: Int,
+                  idProject: Int,
+                  signature: Option[String] = None,
+                  name: String,
+                  description: Option[String] = None,
+                  createdDate: ZonedDateTime,
+                  updatedDate: Option[ZonedDateTime] = None) {
 
   def save()(implicit session: DBSession = Group.autoSession): Group = Group.save(this)(session)
 
@@ -26,8 +27,17 @@ object Group extends SQLSyntaxSupport[Group] {
   override val tableName = "group"
 
   override val columns = Seq("id", "id_project", "signature", "name", "description", "created_date", "updated_date")
+  override val autoSession = AutoSession
+  val g = Group.syntax("g")
 
   def apply(g: SyntaxProvider[Group])(rs: WrappedResultSet): Group = apply(g.resultName)(rs)
+
+  def find(id: Int)(implicit session: DBSession = autoSession): Option[Group] = {
+    withSQL {
+      select.from(Group as g).where.eq(g.id, id)
+    }.map(Group(g.resultName)).single.apply()
+  }
+
   def apply(g: ResultName[Group])(rs: WrappedResultSet): Group = new Group(
     id = rs.get(g.id),
     idProject = rs.get(g.idProject),
@@ -37,16 +47,6 @@ object Group extends SQLSyntaxSupport[Group] {
     createdDate = rs.get(g.createdDate),
     updatedDate = rs.get(g.updatedDate)
   )
-
-  val g = Group.syntax("g")
-
-  override val autoSession = AutoSession
-
-  def find(id: Int)(implicit session: DBSession = autoSession): Option[Group] = {
-    withSQL {
-      select.from(Group as g).where.eq(g.id, id)
-    }.map(Group(g.resultName)).single.apply()
-  }
 
   def findAll()(implicit session: DBSession = autoSession): List[Group] = {
     withSQL(select.from(Group as g)).map(Group(g.resultName)).list.apply()
@@ -75,12 +75,12 @@ object Group extends SQLSyntaxSupport[Group] {
   }
 
   def create(
-    idProject: Int,
-    signature: Option[String] = None,
-    name: String,
-    description: Option[String] = None,
-    createdDate: ZonedDateTime,
-    updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Group = {
+              idProject: Int,
+              signature: Option[String] = None,
+              name: String,
+              description: Option[String] = None,
+              createdDate: ZonedDateTime,
+              updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Group = {
     val generatedKey = withSQL {
       insert.into(Group).namedValues(
         column.idProject -> idProject,
@@ -111,7 +111,8 @@ object Group extends SQLSyntaxSupport[Group] {
         'description -> entity.description,
         'createdDate -> entity.createdDate,
         'updatedDate -> entity.updatedDate))
-    SQL("""insert into group(
+    SQL(
+      """insert into group(
       id_project,
       signature,
       name,
@@ -144,7 +145,9 @@ object Group extends SQLSyntaxSupport[Group] {
   }
 
   def destroy(entity: Group)(implicit session: DBSession = autoSession): Int = {
-    withSQL { delete.from(Group).where.eq(column.id, entity.id) }.update.apply()
+    withSQL {
+      delete.from(Group).where.eq(column.id, entity.id)
+    }.update.apply()
   }
 
 }

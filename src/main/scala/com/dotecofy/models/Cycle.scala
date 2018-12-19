@@ -1,16 +1,17 @@
 package com.dotecofy.models
 
+import java.time.ZonedDateTime
+
 import scalikejdbc._
-import java.time.{ZonedDateTime}
 
 case class Cycle(
-  id: Int,
-  idProject: Int,
-  signature: String,
-  name: String,
-  description: Option[String] = None,
-  createdDate: ZonedDateTime,
-  updatedDate: Option[ZonedDateTime] = None) {
+                  id: Int,
+                  idProject: Int,
+                  signature: String,
+                  name: String,
+                  description: Option[String] = None,
+                  createdDate: ZonedDateTime,
+                  updatedDate: Option[ZonedDateTime] = None) {
 
   def save()(implicit session: DBSession = Cycle.autoSession): Cycle = Cycle.save(this)(session)
 
@@ -26,8 +27,11 @@ object Cycle extends SQLSyntaxSupport[Cycle] {
   override val tableName = "cycle"
 
   override val columns = Seq("id", "id_project", "signature", "name", "description", "created_date", "updated_date")
+  override val autoSession = AutoSession
+  val c = Cycle.syntax("c")
 
   def apply(c: SyntaxProvider[Cycle])(rs: WrappedResultSet): Cycle = apply(c.resultName)(rs)
+
   def apply(c: ResultName[Cycle])(rs: WrappedResultSet): Cycle = new Cycle(
     id = rs.get(c.id),
     idProject = rs.get(c.idProject),
@@ -37,10 +41,6 @@ object Cycle extends SQLSyntaxSupport[Cycle] {
     createdDate = rs.get(c.createdDate),
     updatedDate = rs.get(c.updatedDate)
   )
-
-  val c = Cycle.syntax("c")
-
-  override val autoSession = AutoSession
 
   def find(id: Int)(implicit session: DBSession = autoSession): Option[Cycle] = {
     withSQL {
@@ -75,12 +75,12 @@ object Cycle extends SQLSyntaxSupport[Cycle] {
   }
 
   def create(
-    idProject: Int,
-    signature: String,
-    name: String,
-    description: Option[String] = None,
-    createdDate: ZonedDateTime,
-    updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Cycle = {
+              idProject: Int,
+              signature: String,
+              name: String,
+              description: Option[String] = None,
+              createdDate: ZonedDateTime,
+              updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Cycle = {
     val generatedKey = withSQL {
       insert.into(Cycle).namedValues(
         column.idProject -> idProject,
@@ -111,7 +111,8 @@ object Cycle extends SQLSyntaxSupport[Cycle] {
         'description -> entity.description,
         'createdDate -> entity.createdDate,
         'updatedDate -> entity.updatedDate))
-    SQL("""insert into cycle(
+    SQL(
+      """insert into cycle(
       id_project,
       signature,
       name,
@@ -144,7 +145,9 @@ object Cycle extends SQLSyntaxSupport[Cycle] {
   }
 
   def destroy(entity: Cycle)(implicit session: DBSession = autoSession): Int = {
-    withSQL { delete.from(Cycle).where.eq(column.id, entity.id) }.update.apply()
+    withSQL {
+      delete.from(Cycle).where.eq(column.id, entity.id)
+    }.update.apply()
   }
 
 }

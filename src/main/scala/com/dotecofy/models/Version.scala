@@ -1,15 +1,16 @@
 package com.dotecofy.models
 
+import java.time.ZonedDateTime
+
 import scalikejdbc._
-import java.time.{ZonedDateTime}
 
 case class Version(
-  id: Int,
-  version: String,
-  description: Option[String] = None,
-  documentation: Option[String] = None,
-  createdDate: ZonedDateTime,
-  updatedDate: Option[ZonedDateTime] = None) {
+                    id: Int,
+                    version: String,
+                    description: Option[String] = None,
+                    documentation: Option[String] = None,
+                    createdDate: ZonedDateTime,
+                    updatedDate: Option[ZonedDateTime] = None) {
 
   def save()(implicit session: DBSession = Version.autoSession): Version = Version.save(this)(session)
 
@@ -25,8 +26,17 @@ object Version extends SQLSyntaxSupport[Version] {
   override val tableName = "version"
 
   override val columns = Seq("id", "version", "description", "documentation", "created_date", "updated_date")
+  override val autoSession = AutoSession
+  val v = Version.syntax("v")
 
   def apply(v: SyntaxProvider[Version])(rs: WrappedResultSet): Version = apply(v.resultName)(rs)
+
+  def find(id: Int)(implicit session: DBSession = autoSession): Option[Version] = {
+    withSQL {
+      select.from(Version as v).where.eq(v.id, id)
+    }.map(Version(v.resultName)).single.apply()
+  }
+
   def apply(v: ResultName[Version])(rs: WrappedResultSet): Version = new Version(
     id = rs.get(v.id),
     version = rs.get(v.version),
@@ -35,16 +45,6 @@ object Version extends SQLSyntaxSupport[Version] {
     createdDate = rs.get(v.createdDate),
     updatedDate = rs.get(v.updatedDate)
   )
-
-  val v = Version.syntax("v")
-
-  override val autoSession = AutoSession
-
-  def find(id: Int)(implicit session: DBSession = autoSession): Option[Version] = {
-    withSQL {
-      select.from(Version as v).where.eq(v.id, id)
-    }.map(Version(v.resultName)).single.apply()
-  }
 
   def findAll()(implicit session: DBSession = autoSession): List[Version] = {
     withSQL(select.from(Version as v)).map(Version(v.resultName)).list.apply()
@@ -73,11 +73,11 @@ object Version extends SQLSyntaxSupport[Version] {
   }
 
   def create(
-    version: String,
-    description: Option[String] = None,
-    documentation: Option[String] = None,
-    createdDate: ZonedDateTime,
-    updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Version = {
+              version: String,
+              description: Option[String] = None,
+              documentation: Option[String] = None,
+              createdDate: ZonedDateTime,
+              updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Version = {
     val generatedKey = withSQL {
       insert.into(Version).namedValues(
         column.version -> version,
@@ -105,7 +105,8 @@ object Version extends SQLSyntaxSupport[Version] {
         'documentation -> entity.documentation,
         'createdDate -> entity.createdDate,
         'updatedDate -> entity.updatedDate))
-    SQL("""insert into version(
+    SQL(
+      """insert into version(
       version,
       description,
       documentation,
@@ -135,7 +136,9 @@ object Version extends SQLSyntaxSupport[Version] {
   }
 
   def destroy(entity: Version)(implicit session: DBSession = autoSession): Int = {
-    withSQL { delete.from(Version).where.eq(column.id, entity.id) }.update.apply()
+    withSQL {
+      delete.from(Version).where.eq(column.id, entity.id)
+    }.update.apply()
   }
 
 }

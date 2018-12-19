@@ -1,16 +1,17 @@
 package com.dotecofy.models
 
+import java.time.ZonedDateTime
+
 import scalikejdbc._
-import java.time.{ZonedDateTime}
 
 case class Layer(
-  id: Int,
-  idProject: Int,
-  signature: String,
-  name: String,
-  description: Option[String] = None,
-  createdDate: ZonedDateTime,
-  updatedDate: Option[ZonedDateTime] = None) {
+                  id: Int,
+                  idProject: Int,
+                  signature: String,
+                  name: String,
+                  description: Option[String] = None,
+                  createdDate: ZonedDateTime,
+                  updatedDate: Option[ZonedDateTime] = None) {
 
   def save()(implicit session: DBSession = Layer.autoSession): Layer = Layer.save(this)(session)
 
@@ -26,8 +27,11 @@ object Layer extends SQLSyntaxSupport[Layer] {
   override val tableName = "layer"
 
   override val columns = Seq("id", "id_project", "signature", "name", "description", "created_date", "updated_date")
+  override val autoSession = AutoSession
+  val l = Layer.syntax("l")
 
   def apply(l: SyntaxProvider[Layer])(rs: WrappedResultSet): Layer = apply(l.resultName)(rs)
+
   def apply(l: ResultName[Layer])(rs: WrappedResultSet): Layer = new Layer(
     id = rs.get(l.id),
     idProject = rs.get(l.idProject),
@@ -37,10 +41,6 @@ object Layer extends SQLSyntaxSupport[Layer] {
     createdDate = rs.get(l.createdDate),
     updatedDate = rs.get(l.updatedDate)
   )
-
-  val l = Layer.syntax("l")
-
-  override val autoSession = AutoSession
 
   def find(id: Int)(implicit session: DBSession = autoSession): Option[Layer] = {
     withSQL {
@@ -75,12 +75,12 @@ object Layer extends SQLSyntaxSupport[Layer] {
   }
 
   def create(
-    idProject: Int,
-    signature: String,
-    name: String,
-    description: Option[String] = None,
-    createdDate: ZonedDateTime,
-    updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Layer = {
+              idProject: Int,
+              signature: String,
+              name: String,
+              description: Option[String] = None,
+              createdDate: ZonedDateTime,
+              updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Layer = {
     val generatedKey = withSQL {
       insert.into(Layer).namedValues(
         column.idProject -> idProject,
@@ -111,7 +111,8 @@ object Layer extends SQLSyntaxSupport[Layer] {
         'description -> entity.description,
         'createdDate -> entity.createdDate,
         'updatedDate -> entity.updatedDate))
-    SQL("""insert into layer(
+    SQL(
+      """insert into layer(
       id_project,
       signature,
       name,
@@ -144,7 +145,9 @@ object Layer extends SQLSyntaxSupport[Layer] {
   }
 
   def destroy(entity: Layer)(implicit session: DBSession = autoSession): Int = {
-    withSQL { delete.from(Layer).where.eq(column.id, entity.id) }.update.apply()
+    withSQL {
+      delete.from(Layer).where.eq(column.id, entity.id)
+    }.update.apply()
   }
 
 }

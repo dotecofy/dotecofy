@@ -1,18 +1,19 @@
 package com.dotecofy.models
 
+import java.time.ZonedDateTime
+
 import scalikejdbc._
-import java.time.{ZonedDateTime}
 
 case class Improvement(
-  id: Int,
-  featureId: Int,
-  versionId: Int,
-  name: String,
-  signature: String,
-  description: Option[String] = None,
-  documentation: Option[String] = None,
-  createdDate: ZonedDateTime,
-  updatedDate: Option[ZonedDateTime] = None) {
+                        id: Int,
+                        featureId: Int,
+                        versionId: Int,
+                        name: String,
+                        signature: String,
+                        description: Option[String] = None,
+                        documentation: Option[String] = None,
+                        createdDate: ZonedDateTime,
+                        updatedDate: Option[ZonedDateTime] = None) {
 
   def save()(implicit session: DBSession = Improvement.autoSession): Improvement = Improvement.save(this)(session)
 
@@ -28,8 +29,17 @@ object Improvement extends SQLSyntaxSupport[Improvement] {
   override val tableName = "improvement"
 
   override val columns = Seq("id", "feature_id", "version_id", "name", "signature", "description", "documentation", "created_date", "updated_date")
+  override val autoSession = AutoSession
+  val i = Improvement.syntax("i")
 
   def apply(i: SyntaxProvider[Improvement])(rs: WrappedResultSet): Improvement = apply(i.resultName)(rs)
+
+  def find(id: Int)(implicit session: DBSession = autoSession): Option[Improvement] = {
+    withSQL {
+      select.from(Improvement as i).where.eq(i.id, id)
+    }.map(Improvement(i.resultName)).single.apply()
+  }
+
   def apply(i: ResultName[Improvement])(rs: WrappedResultSet): Improvement = new Improvement(
     id = rs.get(i.id),
     featureId = rs.get(i.featureId),
@@ -41,16 +51,6 @@ object Improvement extends SQLSyntaxSupport[Improvement] {
     createdDate = rs.get(i.createdDate),
     updatedDate = rs.get(i.updatedDate)
   )
-
-  val i = Improvement.syntax("i")
-
-  override val autoSession = AutoSession
-
-  def find(id: Int)(implicit session: DBSession = autoSession): Option[Improvement] = {
-    withSQL {
-      select.from(Improvement as i).where.eq(i.id, id)
-    }.map(Improvement(i.resultName)).single.apply()
-  }
 
   def findAll()(implicit session: DBSession = autoSession): List[Improvement] = {
     withSQL(select.from(Improvement as i)).map(Improvement(i.resultName)).list.apply()
@@ -79,15 +79,15 @@ object Improvement extends SQLSyntaxSupport[Improvement] {
   }
 
   def create(
-    id: Int,
-    featureId: Int,
-    versionId: Int,
-    name: String,
-    signature: String,
-    description: Option[String] = None,
-    documentation: Option[String] = None,
-    createdDate: ZonedDateTime,
-    updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Improvement = {
+              id: Int,
+              featureId: Int,
+              versionId: Int,
+              name: String,
+              signature: String,
+              description: Option[String] = None,
+              documentation: Option[String] = None,
+              createdDate: ZonedDateTime,
+              updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Improvement = {
     withSQL {
       insert.into(Improvement).namedValues(
         column.id -> id,
@@ -126,7 +126,8 @@ object Improvement extends SQLSyntaxSupport[Improvement] {
         'documentation -> entity.documentation,
         'createdDate -> entity.createdDate,
         'updatedDate -> entity.updatedDate))
-    SQL("""insert into improvement(
+    SQL(
+      """insert into improvement(
       id,
       feature_id,
       version_id,
@@ -167,7 +168,9 @@ object Improvement extends SQLSyntaxSupport[Improvement] {
   }
 
   def destroy(entity: Improvement)(implicit session: DBSession = autoSession): Int = {
-    withSQL { delete.from(Improvement).where.eq(column.id, entity.id) }.update.apply()
+    withSQL {
+      delete.from(Improvement).where.eq(column.id, entity.id)
+    }.update.apply()
   }
 
 }

@@ -1,15 +1,16 @@
 package com.dotecofy.models
 
+import java.time.ZonedDateTime
+
 import scalikejdbc._
-import java.time.{ZonedDateTime}
 
 case class Output(
-  id: Int,
-  idAssignment: Int,
-  idImprCycle: Int,
-  remark: Option[String] = None,
-  createdDate: ZonedDateTime,
-  updatedDate: Option[ZonedDateTime] = None) {
+                   id: Int,
+                   idAssignment: Int,
+                   idImprCycle: Int,
+                   remark: Option[String] = None,
+                   createdDate: ZonedDateTime,
+                   updatedDate: Option[ZonedDateTime] = None) {
 
   def save()(implicit session: DBSession = Output.autoSession): Output = Output.save(this)(session)
 
@@ -25,20 +26,10 @@ object Output extends SQLSyntaxSupport[Output] {
   override val tableName = "output"
 
   override val columns = Seq("id", "id_assignment", "id_impr_cycle", "remark", "created_date", "updated_date")
-
-  def apply(o: SyntaxProvider[Output])(rs: WrappedResultSet): Output = apply(o.resultName)(rs)
-  def apply(o: ResultName[Output])(rs: WrappedResultSet): Output = new Output(
-    id = rs.get(o.id),
-    idAssignment = rs.get(o.idAssignment),
-    idImprCycle = rs.get(o.idImprCycle),
-    remark = rs.get(o.remark),
-    createdDate = rs.get(o.createdDate),
-    updatedDate = rs.get(o.updatedDate)
-  )
-
+  override val autoSession = AutoSession
   val o = Output.syntax("o")
 
-  override val autoSession = AutoSession
+  def apply(o: SyntaxProvider[Output])(rs: WrappedResultSet): Output = apply(o.resultName)(rs)
 
   def find(id: Int)(implicit session: DBSession = autoSession): Option[Output] = {
     withSQL {
@@ -60,6 +51,15 @@ object Output extends SQLSyntaxSupport[Output] {
     }.map(Output(o.resultName)).single.apply()
   }
 
+  def apply(o: ResultName[Output])(rs: WrappedResultSet): Output = new Output(
+    id = rs.get(o.id),
+    idAssignment = rs.get(o.idAssignment),
+    idImprCycle = rs.get(o.idImprCycle),
+    remark = rs.get(o.remark),
+    createdDate = rs.get(o.createdDate),
+    updatedDate = rs.get(o.updatedDate)
+  )
+
   def findAllBy(where: SQLSyntax)(implicit session: DBSession = autoSession): List[Output] = {
     withSQL {
       select.from(Output as o).where.append(where)
@@ -73,11 +73,11 @@ object Output extends SQLSyntaxSupport[Output] {
   }
 
   def create(
-    idAssignment: Int,
-    idImprCycle: Int,
-    remark: Option[String] = None,
-    createdDate: ZonedDateTime,
-    updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Output = {
+              idAssignment: Int,
+              idImprCycle: Int,
+              remark: Option[String] = None,
+              createdDate: ZonedDateTime,
+              updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Output = {
     val generatedKey = withSQL {
       insert.into(Output).namedValues(
         column.idAssignment -> idAssignment,
@@ -105,7 +105,8 @@ object Output extends SQLSyntaxSupport[Output] {
         'remark -> entity.remark,
         'createdDate -> entity.createdDate,
         'updatedDate -> entity.updatedDate))
-    SQL("""insert into output(
+    SQL(
+      """insert into output(
       id_assignment,
       id_impr_cycle,
       remark,
@@ -135,7 +136,9 @@ object Output extends SQLSyntaxSupport[Output] {
   }
 
   def destroy(entity: Output)(implicit session: DBSession = autoSession): Int = {
-    withSQL { delete.from(Output).where.eq(column.id, entity.id) }.update.apply()
+    withSQL {
+      delete.from(Output).where.eq(column.id, entity.id)
+    }.update.apply()
   }
 
 }

@@ -7,7 +7,7 @@ case class Project(
   id: Int,
   idWorkspace: Int,
   signature: String,
-  name: Option[String] = None,
+  name: String,
   description: Option[String] = None,
   createdDate: ZonedDateTime,
   updatedDate: Option[ZonedDateTime] = None) {
@@ -77,7 +77,7 @@ object Project extends SQLSyntaxSupport[Project] {
   def create(
     idWorkspace: Int,
     signature: String,
-    name: Option[String] = None,
+    name: String,
     description: Option[String] = None,
     createdDate: ZonedDateTime,
     updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Project = {

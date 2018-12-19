@@ -1,15 +1,16 @@
 package com.dotecofy.models
 
+import java.time.ZonedDateTime
+
 import scalikejdbc._
-import java.time.{ZonedDateTime}
 
 case class Verification(
-  id: Int,
-  idOutput: Int,
-  remark: Option[String] = None,
-  verificationDate: ZonedDateTime,
-  createdDate: ZonedDateTime,
-  updateDate: Option[String] = None) {
+                         id: Int,
+                         idOutput: Int,
+                         remark: Option[String] = None,
+                         verificationDate: ZonedDateTime,
+                         createdDate: ZonedDateTime,
+                         updateDate: Option[String] = None) {
 
   def save()(implicit session: DBSession = Verification.autoSession): Verification = Verification.save(this)(session)
 
@@ -25,8 +26,11 @@ object Verification extends SQLSyntaxSupport[Verification] {
   override val tableName = "verification"
 
   override val columns = Seq("id", "id_output", "remark", "verification_date", "created_date", "update_date")
+  override val autoSession = AutoSession
+  val v = Verification.syntax("v")
 
   def apply(v: SyntaxProvider[Verification])(rs: WrappedResultSet): Verification = apply(v.resultName)(rs)
+
   def apply(v: ResultName[Verification])(rs: WrappedResultSet): Verification = new Verification(
     id = rs.get(v.id),
     idOutput = rs.get(v.idOutput),
@@ -35,10 +39,6 @@ object Verification extends SQLSyntaxSupport[Verification] {
     createdDate = rs.get(v.createdDate),
     updateDate = rs.get(v.updateDate)
   )
-
-  val v = Verification.syntax("v")
-
-  override val autoSession = AutoSession
 
   def find(id: Int)(implicit session: DBSession = autoSession): Option[Verification] = {
     withSQL {
@@ -73,11 +73,11 @@ object Verification extends SQLSyntaxSupport[Verification] {
   }
 
   def create(
-    idOutput: Int,
-    remark: Option[String] = None,
-    verificationDate: ZonedDateTime,
-    createdDate: ZonedDateTime,
-    updateDate: Option[String] = None)(implicit session: DBSession = autoSession): Verification = {
+              idOutput: Int,
+              remark: Option[String] = None,
+              verificationDate: ZonedDateTime,
+              createdDate: ZonedDateTime,
+              updateDate: Option[String] = None)(implicit session: DBSession = autoSession): Verification = {
     val generatedKey = withSQL {
       insert.into(Verification).namedValues(
         column.idOutput -> idOutput,
@@ -105,7 +105,8 @@ object Verification extends SQLSyntaxSupport[Verification] {
         'verificationDate -> entity.verificationDate,
         'createdDate -> entity.createdDate,
         'updateDate -> entity.updateDate))
-    SQL("""insert into verification(
+    SQL(
+      """insert into verification(
       id_output,
       remark,
       verification_date,
@@ -135,7 +136,9 @@ object Verification extends SQLSyntaxSupport[Verification] {
   }
 
   def destroy(entity: Verification)(implicit session: DBSession = autoSession): Int = {
-    withSQL { delete.from(Verification).where.eq(column.id, entity.id) }.update.apply()
+    withSQL {
+      delete.from(Verification).where.eq(column.id, entity.id)
+    }.update.apply()
   }
 
 }

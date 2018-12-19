@@ -1,16 +1,17 @@
 package com.dotecofy.models
 
+import java.time.ZonedDateTime
+
 import scalikejdbc._
-import java.time.{ZonedDateTime}
 
 case class User(
-  id: Int,
-  fullname: String,
-  email: String,
-  salt: String,
-  password: String,
-  createdDate: ZonedDateTime,
-  updatedDate: Option[ZonedDateTime] = None) {
+                 id: Int,
+                 fullname: String,
+                 email: String,
+                 salt: String,
+                 password: String,
+                 createdDate: ZonedDateTime,
+                 updatedDate: Option[ZonedDateTime] = None) {
 
   def save()(implicit session: DBSession = User.autoSession): User = User.save(this)(session)
 
@@ -26,21 +27,10 @@ object User extends SQLSyntaxSupport[User] {
   override val tableName = "user"
 
   override val columns = Seq("id", "fullname", "email", "salt", "password", "created_date", "updated_date")
-
-  def apply(u: SyntaxProvider[User])(rs: WrappedResultSet): User = apply(u.resultName)(rs)
-  def apply(u: ResultName[User])(rs: WrappedResultSet): User = new User(
-    id = rs.get(u.id),
-    fullname = rs.get(u.fullname),
-    email = rs.get(u.email),
-    salt = rs.get(u.salt),
-    password = rs.get(u.password),
-    createdDate = rs.get(u.createdDate),
-    updatedDate = rs.get(u.updatedDate)
-  )
-
+  override val autoSession = AutoSession
   val u = User.syntax("u")
 
-  override val autoSession = AutoSession
+  def apply(u: SyntaxProvider[User])(rs: WrappedResultSet): User = apply(u.resultName)(rs)
 
   def find(id: Int)(implicit session: DBSession = autoSession): Option[User] = {
     withSQL {
@@ -51,6 +41,16 @@ object User extends SQLSyntaxSupport[User] {
   def findAll()(implicit session: DBSession = autoSession): List[User] = {
     withSQL(select.from(User as u)).map(User(u.resultName)).list.apply()
   }
+
+  def apply(u: ResultName[User])(rs: WrappedResultSet): User = new User(
+    id = rs.get(u.id),
+    fullname = rs.get(u.fullname),
+    email = rs.get(u.email),
+    salt = rs.get(u.salt),
+    password = rs.get(u.password),
+    createdDate = rs.get(u.createdDate),
+    updatedDate = rs.get(u.updatedDate)
+  )
 
   def countAll()(implicit session: DBSession = autoSession): Long = {
     withSQL(select(sqls.count).from(User as u)).map(rs => rs.long(1)).single.apply().get
@@ -75,12 +75,12 @@ object User extends SQLSyntaxSupport[User] {
   }
 
   def create(
-    fullname: String,
-    email: String,
-    salt: String,
-    password: String,
-    createdDate: ZonedDateTime,
-    updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): User = {
+              fullname: String,
+              email: String,
+              salt: String,
+              password: String,
+              createdDate: ZonedDateTime,
+              updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): User = {
     val generatedKey = withSQL {
       insert.into(User).namedValues(
         column.fullname -> fullname,
@@ -111,7 +111,8 @@ object User extends SQLSyntaxSupport[User] {
         'password -> entity.password,
         'createdDate -> entity.createdDate,
         'updatedDate -> entity.updatedDate))
-    SQL("""insert into user(
+    SQL(
+      """insert into user(
       fullname,
       email,
       salt,
@@ -144,7 +145,9 @@ object User extends SQLSyntaxSupport[User] {
   }
 
   def destroy(entity: User)(implicit session: DBSession = autoSession): Int = {
-    withSQL { delete.from(User).where.eq(column.id, entity.id) }.update.apply()
+    withSQL {
+      delete.from(User).where.eq(column.id, entity.id)
+    }.update.apply()
   }
 
 }
