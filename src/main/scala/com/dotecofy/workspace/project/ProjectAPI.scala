@@ -11,8 +11,9 @@ trait ProjectRoutes extends ScalatraBase with FutureSupport with JacksonJsonSupp
 
   implicit val repository: ProjectRepositoryComponent = ProjectRepository
 
-  get("/workspaces/:signature") {
-    ProjectServices.findByWorkspace(user, params("signature"), 0, 50)
+  get("/") {
+    val workspace = params.get("workspace")
+    ProjectServices.findByWorkspace(user, workspace.get, 0, 50)
   }
 
   post("/workspaces/:signature") {

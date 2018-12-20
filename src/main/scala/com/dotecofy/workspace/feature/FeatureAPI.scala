@@ -11,7 +11,7 @@ trait FeatureRoutes extends ScalatraBase with FutureSupport with JacksonJsonSupp
   }
 
   get("/") {
-    FeatureServices.load(0, 50)
+    //FeatureServices.load(0, 50)
   }
 
   get("/page/:nb") {

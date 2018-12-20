@@ -1,16 +1,15 @@
 package com.dotecofy.models
 
-import java.time.ZonedDateTime
-
 import scalikejdbc._
+import java.time.{ZonedDateTime}
 
 case class Workspace(
-                      id: Int,
-                      signature: String,
-                      name: String,
-                      description: Option[String] = None,
-                      createdDate: ZonedDateTime,
-                      updatedDate: Option[String] = None) {
+  id: Int,
+  signature: String,
+  name: String,
+  description: Option[String] = None,
+  createdDate: ZonedDateTime,
+  updatedDate: Option[ZonedDateTime] = None) {
 
   def save()(implicit session: DBSession = Workspace.autoSession): Workspace = Workspace.save(this)(session)
 
@@ -26,17 +25,8 @@ object Workspace extends SQLSyntaxSupport[Workspace] {
   override val tableName = "workspace"
 
   override val columns = Seq("id", "signature", "name", "description", "created_date", "updated_date")
-  override val autoSession = AutoSession
-  val w = Workspace.syntax("w")
 
   def apply(w: SyntaxProvider[Workspace])(rs: WrappedResultSet): Workspace = apply(w.resultName)(rs)
-
-  def find(id: Int)(implicit session: DBSession = autoSession): Option[Workspace] = {
-    withSQL {
-      select.from(Workspace as w).where.eq(w.id, id)
-    }.map(Workspace(w.resultName)).single.apply()
-  }
-
   def apply(w: ResultName[Workspace])(rs: WrappedResultSet): Workspace = new Workspace(
     id = rs.get(w.id),
     signature = rs.get(w.signature),
@@ -45,6 +35,16 @@ object Workspace extends SQLSyntaxSupport[Workspace] {
     createdDate = rs.get(w.createdDate),
     updatedDate = rs.get(w.updatedDate)
   )
+
+  val w = Workspace.syntax("w")
+
+  override val autoSession = AutoSession
+
+  def find(id: Int)(implicit session: DBSession = autoSession): Option[Workspace] = {
+    withSQL {
+      select.from(Workspace as w).where.eq(w.id, id)
+    }.map(Workspace(w.resultName)).single.apply()
+  }
 
   def findAll()(implicit session: DBSession = autoSession): List[Workspace] = {
     withSQL(select.from(Workspace as w)).map(Workspace(w.resultName)).list.apply()
@@ -73,11 +73,11 @@ object Workspace extends SQLSyntaxSupport[Workspace] {
   }
 
   def create(
-              signature: String,
-              name: String,
-              description: Option[String] = None,
-              createdDate: ZonedDateTime,
-              updatedDate: Option[String] = None)(implicit session: DBSession = autoSession): Workspace = {
+    signature: String,
+    name: String,
+    description: Option[String] = None,
+    createdDate: ZonedDateTime,
+    updatedDate: Option[ZonedDateTime] = None)(implicit session: DBSession = autoSession): Workspace = {
     val generatedKey = withSQL {
       insert.into(Workspace).namedValues(
         column.signature -> signature,
@@ -105,8 +105,7 @@ object Workspace extends SQLSyntaxSupport[Workspace] {
         'description -> entity.description,
         'createdDate -> entity.createdDate,
         'updatedDate -> entity.updatedDate))
-    SQL(
-      """insert into workspace(
+    SQL("""insert into workspace(
       signature,
       name,
       description,
@@ -136,9 +135,7 @@ object Workspace extends SQLSyntaxSupport[Workspace] {
   }
 
   def destroy(entity: Workspace)(implicit session: DBSession = autoSession): Int = {
-    withSQL {
-      delete.from(Workspace).where.eq(column.id, entity.id)
-    }.update.apply()
+    withSQL { delete.from(Workspace).where.eq(column.id, entity.id) }.update.apply()
   }
 
 }

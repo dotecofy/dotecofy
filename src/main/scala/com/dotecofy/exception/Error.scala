@@ -33,4 +33,8 @@ object ErrorBuilder {
     errors.append(Error(INVALID_FORM_FIELD, code, message, null))
     Error(error.kind, error.code, error.message, Option(errors.toList))
   }
+
+  def internalError(code: String, message: String): Error = {
+    Error(INTERNAL_ERROR, code, Option(message), null)
+  }
 }

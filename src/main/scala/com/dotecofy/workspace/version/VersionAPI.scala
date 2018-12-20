@@ -8,7 +8,7 @@ import org.scalatra.json.JacksonJsonSupport
 trait VersionRoutes extends ScalatraBase with FutureSupport with JacksonJsonSupport with CorsSupport{
 
   get("/") {
-    VersionServices.load(0, 50)
+    //VersionServices.load(0, 50)
   }
 }
 
