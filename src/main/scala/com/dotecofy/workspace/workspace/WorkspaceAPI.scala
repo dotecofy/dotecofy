@@ -1,28 +1,40 @@
+
 package com.dotecofy.workspace.workspace
 
-import org.json4s.{DefaultFormats, Formats}
-import org.scalatra.{CorsSupport, FutureSupport, ScalatraBase, ScalatraServlet}
+import cloud.dest.sbf.api.ParseHeaders
+import cloud.dest.sbf.common.FatherSearch.{ FSearchReq, FSearchRes }
+import org.scalatra.{ CorsSupport, FutureSupport, ScalatraBase }
 import org.scalatra.json.JacksonJsonSupport
 
-import com.dotecofy.models.User
+trait WorkspaceAPI extends ScalatraBase with FutureSupport with JacksonJsonSupport with CorsSupport {
 
-trait WorkspaceRoutes extends ScalatraBase with FutureSupport with JacksonJsonSupport with CorsSupport{
-
-  val user = new User(id = 1, fullname = "Joël Favre", email = "joel.favre@dest.cloud", salt = "awdwadw", password="6aw4ef54", createdDate=null)
-
-  implicit val repository:WorkspaceRepositoryComponent = WorkspaceRepository
+  implicit val services: WorkspaceServicesComponentSub = WorkspaceServicesSub
+  implicit val repository: WorkspaceRepositoryComponentSub = WorkspaceRepositorySub
 
   get("/") {
-    WorkspaceServices.findByUser(user, 0, 50)
+    services.findByProfile(ParseHeaders.authorization(request).orNull, 0, 50)
   }
-}
 
-class WorkspaceAPI extends ScalatraServlet with FutureSupport with WorkspaceRoutes {
-
-  protected implicit def executor = scala.concurrent.ExecutionContext.Implicits.global
-  protected implicit val jsonFormats: Formats = DefaultFormats
-
-  before() {
-    contentType = formats("json")
+  get("/:signature") {
+    services.findBySignature(ParseHeaders.authorization(request).orNull, params("signature"))
   }
+
+  post("/") {
+    services.create(ParseHeaders.authorization(request).orNull, parsedBody.extract[WorkspaceSrv])
+  }
+
+  put("/:signature") {
+    services.update(ParseHeaders.authorization(request).orNull, params("signature"), parsedBody.extract[WorkspaceSrv])
+  }
+
+  delete("/:signature") {
+    services.delete(ParseHeaders.authorization(request).orNull, params("signature"))
+  }
+
+  post("/fsearch") {
+    val req = parsedBody.extract[FSearchReq]
+    val workspaces = services.findByProfile(ParseHeaders.authorization(request).orNull, (req.pageNumber - 1) * req.pageSize, req.pageSize, (() => { if (req.searchKey == null || req.searchKey.isEmpty) { "name" } else { req.searchKey } }).apply(), req.searchValue).right.get
+    FSearchRes(workspaces.length, workspaces)
+  }
+
 }

@@ -1,119 +1,252 @@
+
+
 package com.dotecofy.workspace.workspace
 
+import java.sql.{SQLException, SQLIntegrityConstraintViolationException}
 import java.time.ZonedDateTime
 
-import com.dotecofy.exception.{Error, ErrorBuilder}
-import com.dotecofy.workspace.workspace.WorkspaceRepository.autoSession
-import scalikejdbc._
+import cloud.dest.sbf.exception.{CommonError, Error, ErrorBuilder}
+import cloud.dest.sbf.tools.DateConverter
+
+import java.sql._
+
+import scala.collection.mutable.ListBuffer
+
+case class WorkspaceDB(
+
+    id:Int = 0,
+
+    signature:String = null,
+     name: String,
+         description: Option[String] = None,
+    
+    createdDate: ZonedDateTime = null,
+
+    updatedDate: Option[ZonedDateTime] = None,
+)
+
+case class WorkspaceSelect(
+
+    signature:String = null,
+     name: String,
+         description: Option[String] = None,
+    
+    createdDate: ZonedDateTime = null,
+
+    updatedDate: Option[ZonedDateTime] = None,
+)
 
 trait WorkspaceRepositoryComponent {
 
-  val ERROR_COULD_NOT_INSERT = "could_not_insert"
-  val ERROR_COULD_NOT_UPDATE = "could_not_update"
+def create(workspace: WorkspaceDB)(implicit conn: Connection): Either[Error, WorkspaceSelect]
 
-  def create(workspace: WorkspaceDB)(implicit session: DBSession = autoSession): Either[Error, WorkspaceDB]
+def update(id: Int, workspace: WorkspaceDB)(implicit conn: Connection): Either[Error, WorkspaceSelect]
 
-  def update(signature: String, workspace: WorkspaceDB)(implicit session: DBSession = autoSession): Either[Error, WorkspaceDB]
+def delete(id: Int)(implicit conn: Connection): Either[Error, Unit]
 
-  def delete(signature: String)(implicit session: DBSession = autoSession): Either[Error, Unit]
+def findByProfile(profileId: Int, index: Int, nb: Int, col:String=null, value:String=null)(implicit conn: Connection): Either[Error, List[WorkspaceSelect]]
 
-  def findByUser(userId: Int, index: Int, nb: Int)(implicit session: DBSession = autoSession): Either[Error, List[WorkspaceDB]]
+def findIfAllowed(profileId: Int, signature:String)(implicit conn: Connection): Either[Error, Option[WorkspaceDB]]
 
-  def findIfAllowed(userId: Int, workspaceSign: String)(implicit session: DBSession = autoSession): Either[Error, Option[WorkspaceDB]]
 
+def findBySignature(signature: String)(implicit conn: Connection): Either[Error, Option[WorkspaceSelect]]
+
+
+                
 }
 
-object WorkspaceRepository extends WorkspaceRepositoryComponent with SQLSyntaxSupport[WorkspaceDB] {
+abstract class WorkspaceRepository extends WorkspaceRepositoryComponent {
 
-  override val schemaName = Some("dotecofy")
+    override def create(workspace: WorkspaceDB)(implicit conn: Connection): Either[Error, WorkspaceSelect] = {
+        try {
+            val stmt = conn.prepareStatement("INSERT INTO workspace(signature,name,description,created_date) VALUES (?,?,?,?)",
+            Statement.RETURN_GENERATED_KEYS)
 
-  override val tableName = "workspace"
+            stmt.setString(1,workspace.signature)
+stmt.setString(2,workspace.name)
+stmt.setString(3,workspace.description.getOrElse(""))
+stmt.setDate(4, new java.sql.Date(new java.util.Date().getTime))
 
-  override val columns = Seq("id", "signature", "name", "description", "created_date", "updated_date")
+            val affectedRows = stmt.executeUpdate
 
-  val w = WorkspaceRepository.syntax("w")
+            if (affectedRows == 0) throw new SQLException("Creating profile failed, no rows affected.")
 
-  //override val columns = Seq("id", "signature", "name", "description", "created_date", "updated_date")
-
-  override val autoSession = AutoSession
-
-  override def create(workspace: WorkspaceDB)(implicit session: DBSession = autoSession): Either[Error, WorkspaceDB] = {
-    val generatedKey = withSQL {
-      insert.into(WorkspaceRepository).namedValues(
-        column.signature -> workspace.signature,
-        column.name -> workspace.name,
-        column.description -> workspace.description,
-        column.createdDate -> ZonedDateTime.now
-      )
-    }.updateAndReturnGeneratedKey.apply()
-
-    val findW: Option[WorkspaceDB] = find(generatedKey.toInt)
-    findW match {
-      case Some(ret) => Right(ret)
-      case None => Left(ErrorBuilder.internalError(ERROR_COULD_NOT_INSERT, "The generated key is not found in database"))
+            val generatedKeys = stmt.getGeneratedKeys
+            try
+                if (generatedKeys.next) {
+                    val findW = find(generatedKeys.getInt(1))
+                    findW match {
+                        case Some(ret) => Right(ret)
+                        case None => Left(ErrorBuilder.internalError(CommonError.ERROR_COULD_NOT_INSERT, "The generated key is not found in database"))
+                    }
+                }
+                else throw new SQLException("Creating profile failed, no ID obtained.")
+            finally if (generatedKeys != null) generatedKeys.close()
+        } catch {
+            case integrity: SQLIntegrityConstraintViolationException => Left(Error(ErrorBuilder.SQL_EXCEPTION, CommonError.SQL_CONSTRAINT_VIOLATION, Option(integrity.getMessage), Option(List())))
+            case sql: SQLException => Left(Error(ErrorBuilder.SQL_EXCEPTION, sql.getErrorCode.toString, Option(sql.getMessage), Option(List())))
+        } finally {
+            conn.close()
+        }
     }
 
-  }
+    override def update(id: Int, workspace: WorkspaceDB)(implicit conn: Connection): Either[Error, WorkspaceSelect] = {
 
-  override def update(signature: String, workspace: WorkspaceDB)(implicit session: DBSession = autoSession): Either[Error, WorkspaceDB] = {
-    withSQL {
-      scalikejdbc.update(WorkspaceRepository).set(
-        column.signature -> workspace.signature,
-        column.name -> workspace.name,
-        column.description -> workspace.description,
-        column.updatedDate -> ZonedDateTime.now
-      ).where.eq(column.signature, signature)
-    }.update.apply()
+        try {
+            val stmt = conn.prepareStatement("UPDATE workspace SET signature=?,name=?,description=?,updated_date=? WHERE id=?")
 
-    val findW: Option[WorkspaceDB] = findBySignature(workspace.signature)
-    findW match {
-      case Some(ret) => Right(ret)
-      case None => Left(ErrorBuilder.internalError(ERROR_COULD_NOT_INSERT, "The id is not found in database"))
+            stmt.setString(1,workspace.signature)
+stmt.setString(2,workspace.name)
+stmt.setString(3,workspace.description.getOrElse(""))
+stmt.setDate(4, new java.sql.Date(new java.util.Date().getTime))
+stmt.setInt(5, id)
+
+            val affectedRows = stmt.executeUpdate
+
+            if (affectedRows == 0) {
+                throw new SQLException("Creating profile failed, no rows affected.")
+            }else {
+                val findW = find(id)
+                findW match {
+                    case Some(ret) => Right(ret)
+                    case None => Left(ErrorBuilder.internalError(CommonError.ERROR_COULD_NOT_INSERT, "The generated key is not found in database"))
+                }
+            }
+
+        } catch {
+            case integrity: SQLIntegrityConstraintViolationException => Left(Error(ErrorBuilder.SQL_EXCEPTION, CommonError.SQL_CONSTRAINT_VIOLATION, Option(integrity.getMessage), Option(List())))
+            case sql: SQLException => Left(Error(ErrorBuilder.SQL_EXCEPTION, sql.getErrorCode.toString, Option(sql.getMessage), Option(List())))
+        } finally {
+            conn.close()
+        }
     }
-  }
 
-  override def delete(signature: String)(implicit session: DBSession): Either[Error, Unit] = {
-    withSQL {
-      scalikejdbc.delete.from(WorkspaceRepository).where.eq(column.signature, signature)
-    }.update.apply()
-    Right()
-  }
+    override def delete(id: Int)(implicit conn: Connection): Either[Error, Unit] = {
+        try {
+            val stmt = conn.prepareStatement("DELETE FROM workspace WHERE workspace.id=?")
+            stmt.setInt(1, id)
 
-  override def findByUser(userId: Int, index: Int, nb: Int)(implicit session: DBSession): Either[Error, List[WorkspaceDB]] = {
-    val workspaces: List[WorkspaceDB] = sql"select ${w.result.*} from ${WorkspaceRepository.as(w)} where id in(select id_tuple from group_right inner join `right` on group_right.id_right=right.id inner join user_group on group_right.id_group=user_group.id_group where user_group.id_user=${userId} and right.right='VIEW_WORKSPACE')"
-      //.map(rs => WorkspaceDB(rs)).list.apply()
-      .map(WorkspaceRepository(w.resultName)).list.apply()
-    Right(workspaces)
-  }
+            val affectedRows = stmt.executeUpdate
+            if (affectedRows == 0) {
+                throw new SQLException("Creating profile failed, no rows affected.")
+            }
+            Right()
+        } catch {
+            case sql: SQLException => Left(Error(ErrorBuilder.SQL_EXCEPTION, sql.getErrorCode.toString, Option(sql.getMessage), Option(List())))
+        } finally {
+            conn.close()
+        }
+    }
 
-  override def findIfAllowed(userId: Int, signature: String)(implicit session: DBSession): Either[Error, Option[WorkspaceDB]] = {
-    val workspace: Option[WorkspaceDB] = sql"select ${w.result.*} from ${WorkspaceRepository.as(w)} inner join group_right on ${w.id} = group_right.id_tuple inner join user_group on group_right.id_group = user_group.id_group inner join `right` on group_right.id_right=right.id where user_group.id_user=${userId} and ${w.signature}=${signature} and right.right='VIEW_WORKSPACE';"
-      .map(WorkspaceRepository(w.resultName)).single.apply()
+    override def findByProfile(profileId: Int, index: Int, nb: Int, col:String=null, value:String=null)(implicit conn: Connection): Either[Error, List[WorkspaceSelect]] = {
 
-    Right(workspace)
-    /*SQL("select * ${w.result.*} from ${WorkspaceRepository.as(w)}  group_right inner join 'right' on group_right.id_right='right'.id inner join user_group on group_right.id_group=user_group.id_group where user_group.id_user={userId} and right.id_tuple={workspaceId} and right.right='VIEW_WORKSPACE'").bindByName('userId -> user.id).bindByName('workspaceId -> workspace.id)
-      .map(_.int(1)).single.apply().get > 0*/
-  }
+        try {
+            var stmt:PreparedStatement = null
+            if(col == null || value == null || col.isEmpty || value.isEmpty)
+                stmt = conn.prepareStatement("SELECT workspace.* FROM workspace")
+            else col match {
+                case "signature" => {
+                    stmt = conn.prepareStatement("SELECT workspace.* FROM workspace WHERE workspace.signature=?")
+                    stmt.setString(1, value)
+                }
+                                case "name" => {
+                    stmt = conn.prepareStatement("SELECT workspace.* FROM workspace WHERE workspace.name=?")
+                    stmt.setString(1, value)
+                }
+                                case "description" => {
+                    stmt = conn.prepareStatement("SELECT workspace.* FROM workspace WHERE workspace.description=?")
+                    stmt.setString(1, value)
+                }
+                            }
+            
+            val rs:ResultSet = stmt.executeQuery
 
-  private def find(id: Int)(implicit session: DBSession = autoSession): Option[WorkspaceDB] = {
-    withSQL {
-      select.from(WorkspaceRepository as w).where.eq(w.id, id)
-    }.map(WorkspaceRepository(w.resultName)).single.apply()
-  }
+            Right(applyList(rs))
+        } catch {
+            case sql: SQLException => Left(Error(ErrorBuilder.SQL_EXCEPTION, sql.getErrorCode.toString, Option(sql.getMessage), Option(List())))
+        } finally {
+            conn.close()
+        }
 
-  private def findBySignature(signature: String)(implicit session: DBSession = autoSession): Option[WorkspaceDB] = {
-    withSQL {
-      select.from(WorkspaceRepository as w).where.eq(w.signature, signature)
-    }.map(WorkspaceRepository(w.resultName)).single.apply()
-  }
+    }
 
-  def apply(w: SyntaxProvider[WorkspaceDB])(rs: WrappedResultSet): WorkspaceDB = apply(w.resultName)(rs)
-  def apply(w: ResultName[WorkspaceDB])(rs: WrappedResultSet): WorkspaceDB = new WorkspaceDB(
-    id = rs.get(w.id),
-    signature = rs.get(w.signature),
-    name = rs.get(w.name),
-    description = rs.get(w.description),
-    createdDate = rs.get(w.createdDate),
-    updatedDate = rs.get(w.updatedDate)
-  )
+    private def find(id: Int)(implicit conn: Connection): Option[WorkspaceSelect] = {
+        try {
+            val stmt = conn.prepareStatement("SELECT workspace.* FROM workspace WHERE workspace.id=?")
+            stmt.setInt(1, id)
+            val rs:ResultSet = stmt.executeQuery
+
+            if(rs.next) Option(apply(rs))
+            else None
+            
+        } catch {
+            case sql: SQLException => None
+        } finally {
+            conn.close()
+        }
+    }
+
+    
+    override def findBySignature(signature: String)(implicit conn: Connection): Either[Error, Option[WorkspaceSelect]] = {
+        try {
+            val stmt = conn.prepareStatement("SELECT workspace.* FROM workspace WHERE workspace.signature=?")
+            stmt.setString(1, signature)
+            val rs:ResultSet = stmt.executeQuery
+
+            if(rs.next) Right(Option(apply(rs)))
+            else Right(None)
+        
+        } catch {
+            case sql: SQLException => Left(Error(ErrorBuilder.SQL_EXCEPTION, sql.getErrorCode.toString, Option(sql.getMessage), Option(List())))
+        } finally {
+            conn.close()
+        }
+    }
+       
+    
+                                    
+    override def findIfAllowed(profileId: Int, signature:String)(implicit conn: Connection): Either[Error, Option[WorkspaceDB]] = {
+        try {
+            val stmt = conn.prepareStatement("SELECT workspace.* FROM workspace WHERE workspace.signature=?")
+            stmt.setString(1, signature)
+            val rs:ResultSet = stmt.executeQuery
+
+            if(rs.next) Right(Option(applyDB(rs)))
+            else Right(None)
+            
+        } catch {
+            case sql: SQLException => Left(Error(ErrorBuilder.SQL_EXCEPTION, sql.getErrorCode.toString, Option(sql.getMessage), Option(List())))
+        } finally {
+            conn.close()
+        }
+    }
+
+    private def applyList(rs: ResultSet): List[WorkspaceSelect] = {
+        val res : ListBuffer[WorkspaceSelect] = ListBuffer.empty[WorkspaceSelect]
+        while(rs.next) {
+            res+=apply(rs)
+        }
+        res.toList
+    }
+
+    private def apply(rs: ResultSet): WorkspaceSelect = WorkspaceSelect(
+        
+        signature = rs.getString("signature"),
+                        name = 
+            rs.getString("name"),
+                    description = 
+             Option(rs.getString("description")),                 
+        createdDate = DateConverter.toZonedDateTime(rs.getTimestamp("created_date")).orNull,        
+        updatedDate = DateConverter.toZonedDateTime(rs.getTimestamp("updated_date"))    )
+
+    private def applyDB(rs: ResultSet): WorkspaceDB = WorkspaceDB(
+        id = rs.getInt("id"),
+        
+        signature = rs.getString("signature"),
+                        name = 
+            rs.getString("name"),
+                    description = 
+             Option(rs.getString("description")),                 
+        createdDate = DateConverter.toZonedDateTime(rs.getTimestamp("created_date")).orNull,        
+        updatedDate = DateConverter.toZonedDateTime(rs.getTimestamp("updated_date"))    )
 }

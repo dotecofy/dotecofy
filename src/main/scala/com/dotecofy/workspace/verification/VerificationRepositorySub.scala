@@ -1,0 +1,8 @@
+
+package com.dotecofy.workspace.verification
+
+sealed trait VerificationRepositoryComponentSub extends VerificationRepositoryComponent
+
+object VerificationRepositorySub extends VerificationRepository with VerificationRepositoryComponentSub {
+
+}

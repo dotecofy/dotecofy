@@ -1,0 +1,8 @@
+
+package com.dotecofy.improvement.improvement
+
+sealed trait ImprovementRepositoryComponentSub extends ImprovementRepositoryComponent
+
+object ImprovementRepositorySub extends ImprovementRepository with ImprovementRepositoryComponentSub {
+
+}

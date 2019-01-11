@@ -1,33 +1,47 @@
+
 package com.dotecofy.workspace.feature
 
-import org.json4s.{DefaultFormats, Formats}
+import cloud.dest.sbf.api.ParseHeaders
+import cloud.dest.sbf.common.FatherSearch.{ FSearchReq, FSearchRes }
+import org.scalatra.{ CorsSupport, FutureSupport, ScalatraBase }
 import org.scalatra.json.JacksonJsonSupport
-import org.scalatra.{CorsSupport, FutureSupport, ScalatraBase, ScalatraServlet}
 
-trait FeatureRoutes extends ScalatraBase with FutureSupport with JacksonJsonSupport with CorsSupport {
+import com.dotecofy.workspace.project._
 
-  options("/*") {
-    response.setHeader("Access-Control-Allow-Origin", request.getHeader("Origin"))
-  }
+trait FeatureAPI extends ScalatraBase with FutureSupport with JacksonJsonSupport with CorsSupport {
+
+  implicit val services: FeatureServicesComponentSub = FeatureServicesSub
+  implicit val repository: FeatureRepositoryComponentSub = FeatureRepositorySub
+  implicit val repProject: ProjectRepositoryComponentSub = ProjectRepositorySub
 
   get("/") {
-    //FeatureServices.load(0, 50)
+    services.findByProfile(ParseHeaders.authorization(request).orNull, 0, 50)
   }
 
-  get("/page/:nb") {
-    //featureComponent.featureServices.load(0,50)
+  get("/:signature") {
+    services.findBySignature(ParseHeaders.authorization(request).orNull, params("signature"))
   }
 
-}
-
-class FeatureAPI extends ScalatraServlet with FutureSupport with FeatureRoutes {
-
-  protected implicit def executor = scala.concurrent.ExecutionContext.Implicits.global
-
-  //protected implicit lazy val jsonFormats: Formats = DefaultFormats.withBigDecimal
-  protected implicit val jsonFormats: Formats = DefaultFormats
-
-  before() {
-    contentType = formats("json")
+  get("/project/:signature") {
+    services.findByProject(ParseHeaders.authorization(request).orNull, params("signature"))
   }
+
+  post("/") {
+    services.create(ParseHeaders.authorization(request).orNull, parsedBody.extract[FeatureSrv])
+  }
+
+  put("/:signature") {
+    services.update(ParseHeaders.authorization(request).orNull, params("signature"), parsedBody.extract[FeatureSrv])
+  }
+
+  delete("/:signature") {
+    services.delete(ParseHeaders.authorization(request).orNull, params("signature"))
+  }
+
+  post("/fsearch") {
+    val req = parsedBody.extract[FSearchReq]
+    val features = services.findByProfile(ParseHeaders.authorization(request).orNull, (req.pageNumber - 1) * req.pageSize, req.pageSize, (() => { if (req.searchKey == null || req.searchKey.isEmpty) { "name" } else { req.searchKey } }).apply(), req.searchValue).right.get
+    FSearchRes(features.length, features)
+  }
+
 }

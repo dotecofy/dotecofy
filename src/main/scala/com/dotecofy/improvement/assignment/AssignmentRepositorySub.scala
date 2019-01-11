@@ -1,0 +1,8 @@
+
+package com.dotecofy.improvement.assignment
+
+sealed trait AssignmentRepositoryComponentSub extends AssignmentRepositoryComponent
+
+object AssignmentRepositorySub extends AssignmentRepository with AssignmentRepositoryComponentSub {
+
+}

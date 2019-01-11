@@ -1,43 +1,47 @@
+
 package com.dotecofy.workspace.project
 
-import com.dotecofy.models.{Project, User}
-import org.json4s.{DefaultFormats, Formats}
+import cloud.dest.sbf.api.ParseHeaders
+import cloud.dest.sbf.common.FatherSearch.{ FSearchReq, FSearchRes }
+import org.scalatra.{ CorsSupport, FutureSupport, ScalatraBase }
 import org.scalatra.json.JacksonJsonSupport
-import org.scalatra.{CorsSupport, FutureSupport, ScalatraBase, ScalatraServlet}
 
-trait ProjectRoutes extends ScalatraBase with FutureSupport with JacksonJsonSupport with CorsSupport {
+import com.dotecofy.workspace.workspace._
 
-  val user = new User(id = 1, fullname = "Joël Favre", email = "joel.favre@dest.cloud", salt = "awdwadw", password = "6aw4ef54", createdDate = null)
+trait ProjectAPI extends ScalatraBase with FutureSupport with JacksonJsonSupport with CorsSupport {
 
-  implicit val repository: ProjectRepositoryComponent = ProjectRepository
+  implicit val services: ProjectServicesComponentSub = ProjectServicesSub
+  implicit val repository: ProjectRepositoryComponentSub = ProjectRepositorySub
+  implicit val repWorkspace: WorkspaceRepositoryComponentSub = WorkspaceRepositorySub
 
   get("/") {
-    val workspace = params.get("workspace")
-    ProjectServices.findByWorkspace(user, workspace.get, 0, 50)
+    services.findByProfile(ParseHeaders.authorization(request).orNull, 0, 50)
   }
 
-  post("/workspaces/:signature") {
-    ProjectServices.create(user, params("signature"), parsedBody.extract[Project])
+  get("/:signature") {
+    services.findBySignature(ParseHeaders.authorization(request).orNull, params("signature"))
+  }
+
+  get("/workspace/:signature") {
+    services.findByWorkspace(ParseHeaders.authorization(request).orNull, params("signature"))
+  }
+
+  post("/") {
+    services.create(ParseHeaders.authorization(request).orNull, parsedBody.extract[ProjectSrv])
   }
 
   put("/:signature") {
-
+    services.update(ParseHeaders.authorization(request).orNull, params("signature"), parsedBody.extract[ProjectSrv])
   }
 
   delete("/:signature") {
-
+    services.delete(ParseHeaders.authorization(request).orNull, params("signature"))
   }
 
-}
-
-class ProjectAPI extends ScalatraServlet with FutureSupport with ProjectRoutes {
-
-  protected implicit def executor = scala.concurrent.ExecutionContext.Implicits.global
-
-  //protected implicit lazy val jsonFormats: Formats = defaultAcceptedFormats.withBigDecimal
-  protected implicit val jsonFormats: Formats = DefaultFormats
-
-  before() {
-    contentType = formats("json")
+  post("/fsearch") {
+    val req = parsedBody.extract[FSearchReq]
+    val projects = services.findByProfile(ParseHeaders.authorization(request).orNull, (req.pageNumber - 1) * req.pageSize, req.pageSize, (() => { if (req.searchKey == null || req.searchKey.isEmpty) { "name" } else { req.searchKey } }).apply(), req.searchValue).right.get
+    FSearchRes(projects.length, projects)
   }
+
 }

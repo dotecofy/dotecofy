@@ -1,21 +1,21 @@
 
-import com.dotecofy.access.group.GroupAPI
+import cloud.dest.sbf.auth.server.AuthServerAPI
+import com.dotecofy.access.group.GroupAPISub
 import com.dotecofy.access.right.RightAPI
-import com.dotecofy.access.user.UserAPI
-import com.dotecofy.context.`type`.TypeAPI
-import com.dotecofy.context.cycle.CycleAPI
-import com.dotecofy.context.layer.LayerAPI
-import com.dotecofy.improvement.assignment.AssignmentAPI
-import com.dotecofy.improvement.improvement.ImprovementAPI
-import com.dotecofy.improvement.output.OutputAPI
+import com.dotecofy.access.user.UserAPISub
+import com.dotecofy.context.cycle.CycleAPISub
+import com.dotecofy.context.kind.KindAPISub
+import com.dotecofy.context.layer.LayerAPISub
+import com.dotecofy.improvement.assignment.AssignmentAPISub
+import com.dotecofy.improvement.improvement.ImprovementAPISub
+import com.dotecofy.improvement.output.OutputAPISub
 import com.dotecofy.improvement.verification.VerificationAPI
 import com.dotecofy.workspace.feature._
-import com.dotecofy.workspace.project.ProjectAPI
-import com.dotecofy.workspace.version.VersionAPI
-import com.dotecofy.workspace.workspace.WorkspaceAPI
+import com.dotecofy.workspace.project.ProjectAPISub
+import com.dotecofy.workspace.version.VersionAPISub
+import com.dotecofy.workspace.workspace.WorkspaceAPISub
 import javax.servlet.ServletContext
 import org.scalatra._
-import scalikejdbc.config.DBs
 
 
 class ScalatraBootstrap extends LifeCycle {
@@ -25,8 +25,6 @@ class ScalatraBootstrap extends LifeCycle {
   //val cpds = new ComboPooledDataSource
   //logger.info("Created c3p0 connection pool")
 
-  DBs.setupAll()
-
 
   override def init(context: ServletContext) {
 
@@ -35,35 +33,25 @@ class ScalatraBootstrap extends LifeCycle {
     //val db = Database.forDataSource(cpds, None)   // create the Database object
     //context.mount(new DotecofyServlet, "/*")   // create and mount the Scalatra application
 
-    context.mount(new ProjectAPI, "/projects")
-    context.mount(new FeatureAPI, "/features")
-    context.mount(new WorkspaceAPI, "/workspaces")
-    context.mount(new VersionAPI, "/versions")
+    context.mount(new AuthServerAPI, "/auth")
 
-    context.mount(new ImprovementAPI, "/improvements")
-    context.mount(new AssignmentAPI, "/assignments")
-    context.mount(new OutputAPI, "/outputs")
+    context.mount(new ProjectAPISub, "/projects")
+    context.mount(new FeatureAPISub, "/features")
+    context.mount(new WorkspaceAPISub, "/workspaces")
+    context.mount(new VersionAPISub, "/versions")
+
+    context.mount(new ImprovementAPISub, "/improvements")
+    context.mount(new AssignmentAPISub, "/assignments")
+    context.mount(new OutputAPISub, "/outputs")
     context.mount(new VerificationAPI, "/verifications")
 
-    context.mount(new CycleAPI, "/cycles")
-    context.mount(new LayerAPI, "/layers")
-    context.mount(new TypeAPI, "/types")
+    context.mount(new CycleAPISub, "/cycles")
+    context.mount(new LayerAPISub, "/layers")
+    context.mount(new KindAPISub, "/kinds")
 
-    context.mount(new UserAPI, "/users")
-    context.mount(new GroupAPI, "/groups")
+    context.mount(new UserAPISub, "/users")
+    context.mount(new GroupAPISub, "/groups")
     context.mount(new RightAPI, "/rights")
   }
-
-  override def destroy(context: ServletContext) {
-    super.destroy(context)
-    closeDbConnection
-  }
-
-  private def closeDbConnection() {
-    //	logger.info("Closing c3po connection pool")
-    //cpds.close
-    DBs.closeAll()
-  }
-
 
 }

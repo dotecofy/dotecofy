@@ -1,22 +1,52 @@
+
 package com.dotecofy.improvement.output
 
-import org.json4s.{DefaultFormats, Formats}
-import org.scalatra.{CorsSupport, FutureSupport, ScalatraBase, ScalatraServlet}
+import cloud.dest.sbf.api.ParseHeaders
+import cloud.dest.sbf.common.FatherSearch.{ FSearchReq, FSearchRes }
+import org.scalatra.{ CorsSupport, FutureSupport, ScalatraBase }
 import org.scalatra.json.JacksonJsonSupport
 
-trait OutputRoutes extends ScalatraBase with FutureSupport with JacksonJsonSupport with CorsSupport {
+import com.dotecofy.improvement.assignment._
+import com.dotecofy.improvement.improvementcycle._
+
+trait OutputAPI extends ScalatraBase with FutureSupport with JacksonJsonSupport with CorsSupport {
+
+  implicit val services: OutputServicesComponentSub = OutputServicesSub
+  implicit val repository: OutputRepositoryComponentSub = OutputRepositorySub
+  implicit val repAssignment: AssignmentRepositoryComponentSub = AssignmentRepositorySub
+  implicit val repImprovementCycle: ImprovementCycleRepositoryComponentSub = ImprovementCycleRepositorySub
 
   get("/") {
-    //FeatureServices.load(0, 50)
+    services.findByProfile(ParseHeaders.authorization(request).orNull, 0, 50)
   }
-}
 
-class OutputAPI extends ScalatraServlet with FutureSupport with OutputRoutes{
-
-  protected implicit def executor = scala.concurrent.ExecutionContext.Implicits.global
-  protected implicit val jsonFormats: Formats = DefaultFormats
-
-  before() {
-    contentType = formats("json")
+  get("/:signature") {
+    services.findBySignature(ParseHeaders.authorization(request).orNull, params("signature"))
   }
+
+  get("/assignment/:signature") {
+    services.findByAssignment(ParseHeaders.authorization(request).orNull, params("signature"))
+  }
+  get("/improvementcycle/:signature") {
+    services.findByImprovementCycle(ParseHeaders.authorization(request).orNull, params("signature"))
+  }
+
+  post("/") {
+    services.create(ParseHeaders.authorization(request).orNull, parsedBody.extract[OutputSrv])
+  }
+
+  put("/:signature") {
+    services.update(ParseHeaders.authorization(request).orNull, params("signature"), parsedBody.extract[OutputSrv])
+  }
+
+  delete("/:signature") {
+    services.delete(ParseHeaders.authorization(request).orNull, params("signature"))
+  }
+
+  post("/fsearch") {
+    val req = parsedBody.extract[FSearchReq]
+    val outputs = services.findByProfile(ParseHeaders.authorization(request).orNull, (req.pageNumber - 1) * req.pageSize, req.pageSize, (() => { if (req.searchKey == null || req.searchKey.isEmpty) { "name" } else { req.searchKey } }).apply(), req.searchValue).right.get
+    FSearchRes(outputs.length, outputs)
+  }
+
 }

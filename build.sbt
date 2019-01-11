@@ -12,8 +12,6 @@ resolvers += Classpaths.typesafeReleases
 
 
 libraryDependencies ++= Seq(
-
-
   "org.scalatra" %% "scalatra" % ScalatraVersion,
   "org.scalatra" %% "scalatra-auth" % ScalatraVersion,
   "org.scalatra" %% "scalatra-scalatest" % ScalatraVersion % "test",
@@ -26,16 +24,15 @@ libraryDependencies ++= Seq(
 
 libraryDependencies ++= Seq(
   //"com.typesafe.slick" %% "slick" % "3.2.0",
-  "org.scalikejdbc" %% "scalikejdbc" % "3.3.1",
-  "org.scalikejdbc" %% "scalikejdbc-config" % "3.3.1",
-  "org.scalikejdbc" %% "scalikejdbc-test" % "3.3.1" % "test",
+  "com.zaxxer" % "HikariCP" % "3.2.0",
   "org.mariadb.jdbc" % "mariadb-java-client" % "2.3.0",
 )
 
 
 libraryDependencies ++= Seq(
   "org.scalatra" %% "scalatra-json" % ScalatraVersion,
-  "org.json4s" %% "json4s-jackson" % "3.5.2"
+  "org.json4s" %% "json4s-jackson" % "3.5.2",
+  "com.pauldijou" %% "jwt-json4s-jackson" % "1.0.0"
 )
 
 //libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.5"
@@ -44,14 +41,25 @@ libraryDependencies ++= Seq(
 libraryDependencies ++= Seq(
   "org.specs2" %% "specs2-core" % "4.3.4" % "test",
   "org.scalatra" %% "scalatra-specs2" % "2.6.4" % "test",
+  "org.scalacheck" %% "scalacheck" % "1.14.0" % "test",
+  "com.github.agourlay" %% "cornichon-test-framework" % "0.16.3" % Test,
+  "org.specs2" %% "specs2-matcher-extra" % "4.3.6" % Test,
+
   //"org.specs2" %% "specs2-junit" % "4.3.6" % Test,
   //"org.junit.jupiter" % "junit-jupiter-engine" % "5.3.2" % Test
 )
 
+libraryDependencies += "com.github.slugify" % "slugify" % "2.3"
+
+libraryDependencies += "org.scalatra.scalate" %% "scalate-core" % "1.9.0"
+
+
 
 scalacOptions in Test ++= Seq("-Yrangepos")
 
-enablePlugins(ScalikejdbcPlugin)
-
+testFrameworks += new TestFramework("com.github.agourlay.cornichon.framework.CornichonFramework")
 //enablePlugins(SbtTwirl)
 enablePlugins(ScalatraPlugin)
+
+lazy val sbf = Project(id = "cloud-dest-sbf",
+  base = file("../cloud.dest.sbf"))
